@@ -37,6 +37,7 @@ class AlertEvent:
     j: float
     source: str
     source_role: str
+    detail: str = ""
 
 
 @dataclass(frozen=True)

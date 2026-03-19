@@ -85,6 +85,7 @@ def main() -> None:
             j=60.0,
             source="manual_test",
             source_role="TEST",
+            detail="K: 50.0000\nD: 45.0000\nJ: 60.0000",
         )
         alert_service.send(test_event)
         logger.info("Test notification completed")

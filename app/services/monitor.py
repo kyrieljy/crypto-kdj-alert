@@ -27,6 +27,7 @@ class MonitorService:
         self._logger = logger
         self._state_file = config.state_file
         self._signal_state = self._load_state()
+        self._one_minute_alerted: dict[tuple[str, str], int] = {}
 
     def run_forever(self) -> None:
         self._logger.info(
@@ -40,6 +41,10 @@ class MonitorService:
 
     def run_once(self) -> None:
         for symbol in self._config.symbols:
+            try:
+                self._check_one_minute_alerts(symbol)
+            except Exception as exc:  # noqa: BLE001
+                self._logger.exception("Unexpected error while checking 1m alerts for %s: %s", symbol, exc)
             for interval in self._config.intervals:
                 try:
                     self._check_symbol(symbol, interval)
@@ -108,6 +113,63 @@ class MonitorService:
             source_role=self._data_router.active_source_role,
         )
         self._alert_service.send(event)
+
+    def _check_one_minute_alerts(self, symbol: str) -> None:
+        if not (self._config.one_min_range_alert_enabled or self._config.one_min_volume_alert_enabled):
+            return
+
+        candles = self._data_router.fetch_klines(symbol, "1m", max(self._config.candle_limit, 2))
+        if len(candles) < 2:
+            return
+
+        candle = candles[-1] if self._config.alert_on_live_candle else candles[-2]
+        high_low_diff = candle.high_price - candle.low_price
+
+        if self._config.one_min_range_alert_enabled and high_low_diff >= self._config.one_min_range_threshold:
+            self._send_one_minute_alert(
+                symbol=symbol,
+                candle=candle,
+                signal="ONE_MIN_RANGE_ALERT",
+                dedupe_key=(symbol, "ONE_MIN_RANGE_ALERT"),
+                detail=(
+                    f"高低差: {high_low_diff:.4f}\n"
+                    f"阈值: {self._config.one_min_range_threshold}\n"
+                    f"最高价: {candle.high_price:.4f}\n"
+                    f"最低价: {candle.low_price:.4f}"
+                ),
+            )
+
+        if self._config.one_min_volume_alert_enabled and candle.volume > self._config.one_min_volume_threshold:
+            self._send_one_minute_alert(
+                symbol=symbol,
+                candle=candle,
+                signal="ONE_MIN_VOLUME_ALERT",
+                dedupe_key=(symbol, "ONE_MIN_VOLUME_ALERT"),
+                detail=(
+                    f"成交量: {candle.volume:.4f}\n"
+                    f"阈值: {self._config.one_min_volume_threshold}"
+                ),
+            )
+
+    def _send_one_minute_alert(self, symbol: str, candle, signal: str, dedupe_key: tuple[str, str], detail: str) -> None:
+        if self._one_minute_alerted.get(dedupe_key) == candle.open_time_ms:
+            return
+
+        event = AlertEvent(
+            symbol=symbol,
+            interval="1m",
+            signal=signal,
+            candle_open_time_ms=candle.open_time_ms,
+            close_price=candle.close_price,
+            k=0.0,
+            d=0.0,
+            j=0.0,
+            source=self._data_router.active_source_name,
+            source_role=self._data_router.active_source_role,
+            detail=detail,
+        )
+        self._alert_service.send(event)
+        self._one_minute_alerted[dedupe_key] = candle.open_time_ms
 
     @staticmethod
     def _detect_cross(previous_point: IndicatorPoint, current_point: IndicatorPoint) -> str | None:
