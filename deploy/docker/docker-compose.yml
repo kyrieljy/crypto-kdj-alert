@@ -1,0 +1,12 @@
+services:
+  crypto-kdj-alert:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: crypto-kdj-alert
+    restart: always
+    env_file:
+      - ../../.env
+    volumes:
+      - ../../logs:/app/logs
+

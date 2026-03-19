@@ -1,0 +1,18 @@
+[Unit]
+Description=Crypto KDJ Alert Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/crypto-kdj-alert
+EnvironmentFile=/opt/crypto-kdj-alert/.env
+ExecStart=/opt/crypto-kdj-alert/.venv/bin/python -m app.main
+Restart=always
+RestartSec=5
+StandardOutput=append:/opt/crypto-kdj-alert/logs/app.log
+StandardError=append:/opt/crypto-kdj-alert/logs/app.log
+
+[Install]
+WantedBy=multi-user.target
+
