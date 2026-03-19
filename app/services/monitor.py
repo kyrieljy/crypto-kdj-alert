@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import os
 import time
 
@@ -45,6 +45,7 @@ class MonitorService:
                 self._check_one_minute_alerts(symbol)
             except Exception as exc:  # noqa: BLE001
                 self._logger.exception("Unexpected error while checking 1m alerts for %s: %s", symbol, exc)
+
             for interval in self._config.intervals:
                 try:
                     self._check_symbol(symbol, interval)
@@ -61,8 +62,6 @@ class MonitorService:
         if self._config.alert_on_live_candle:
             target_candles = candles
         else:
-            # Exchange kline endpoints typically include the in-progress candle at the end.
-            # Exclude it so alerts are only triggered on confirmed closed candles.
             target_candles = candles[:-1]
 
         if len(target_candles) < self._config.kdj_period + 1:
@@ -132,10 +131,10 @@ class MonitorService:
                 signal="ONE_MIN_RANGE_ALERT",
                 dedupe_key=(symbol, "ONE_MIN_RANGE_ALERT"),
                 detail=(
-                    f"高低差: {high_low_diff:.4f}\n"
-                    f"阈值: {self._config.one_min_range_threshold}\n"
-                    f"最高价: {candle.high_price:.4f}\n"
-                    f"最低价: {candle.low_price:.4f}"
+                    f"range_diff={high_low_diff:.4f}\n"
+                    f"threshold={self._config.one_min_range_threshold}\n"
+                    f"high_price={candle.high_price:.4f}\n"
+                    f"low_price={candle.low_price:.4f}"
                 ),
             )
 
@@ -146,12 +145,20 @@ class MonitorService:
                 signal="ONE_MIN_VOLUME_ALERT",
                 dedupe_key=(symbol, "ONE_MIN_VOLUME_ALERT"),
                 detail=(
-                    f"成交量: {candle.volume:.4f}\n"
-                    f"阈值: {self._config.one_min_volume_threshold}"
+                    f"volume={candle.volume:.4f}\n"
+                    f"threshold={self._config.one_min_volume_threshold}\n"
+                    f"range_diff={high_low_diff:.4f}"
                 ),
             )
 
-    def _send_one_minute_alert(self, symbol: str, candle, signal: str, dedupe_key: tuple[str, str], detail: str) -> None:
+    def _send_one_minute_alert(
+        self,
+        symbol: str,
+        candle,
+        signal: str,
+        dedupe_key: tuple[str, str],
+        detail: str,
+    ) -> None:
         if self._one_minute_alerted.get(dedupe_key) == candle.open_time_ms:
             return
 

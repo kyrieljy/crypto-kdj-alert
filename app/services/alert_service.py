@@ -8,6 +8,36 @@ from app.models import AlertEvent
 from app.notifiers.base import BaseNotifier, NotifierError
 
 
+SIGNAL_LABELS = {
+    "J_CROSS_ABOVE_K": "J上穿K",
+    "J_CROSS_BELOW_K": "J下穿K",
+    "J_CROSS_ABOVE_K_REPLAY": "J上穿K（历史回放）",
+    "J_CROSS_BELOW_K_REPLAY": "J下穿K（历史回放）",
+    "J_CROSS_ABOVE_K_REPLAY_RESEND": "J上穿K（历史回放重发）",
+    "J_CROSS_BELOW_K_REPLAY_RESEND": "J下穿K（历史回放重发）",
+    "J_CROSS_BELOW_K_VERIFY": "J下穿K（中文编码验证）",
+    "ONE_MIN_RANGE_ALERT": "1分钟高低差报警",
+    "ONE_MIN_VOLUME_ALERT": "1分钟成交量报警",
+    "TEST_NOTIFICATION": "测试通知",
+}
+
+SOURCE_ROLE_LABELS = {
+    "PRIMARY": "主源",
+    "BACKUP": "备源",
+    "VERIFY": "验证",
+    "REPLAY": "历史回放",
+    "TEST": "测试",
+}
+
+DETAIL_LABELS = {
+    "range_diff": "高低差",
+    "threshold": "阈值",
+    "high_price": "最高价",
+    "low_price": "最低价",
+    "volume": "成交量",
+}
+
+
 class AlertService:
     def __init__(self, notifiers: list[BaseNotifier], timezone_name: str, logger: logging.Logger) -> None:
         self._notifiers = notifiers
@@ -30,7 +60,7 @@ class AlertService:
         source_role_label = self._render_source_role(event.source_role)
         detail_block = self._render_detail(event)
         return (
-            f"[KDJ预警]\n"
+            "[KDJ预警]\n"
             f"标的: {event.symbol}\n"
             f"周期: {event.interval}\n"
             f"信号: {signal_label}\n"
@@ -43,33 +73,22 @@ class AlertService:
 
     @staticmethod
     def _render_signal(signal: str) -> str:
-        mapping = {
-            "J_CROSS_ABOVE_K": "J上穿K",
-            "J_CROSS_BELOW_K": "J下穿K",
-            "J_CROSS_ABOVE_K_REPLAY": "J上穿K（历史回放）",
-            "J_CROSS_BELOW_K_REPLAY": "J下穿K（历史回放）",
-            "J_CROSS_ABOVE_K_REPLAY_RESEND": "J上穿K（历史回放重发）",
-            "J_CROSS_BELOW_K_REPLAY_RESEND": "J下穿K（历史回放重发）",
-            "J_CROSS_BELOW_K_VERIFY": "J下穿K（中文编码验证）",
-            "ONE_MIN_RANGE_ALERT": "1分钟高低差报警",
-            "ONE_MIN_VOLUME_ALERT": "1分钟成交量报警",
-            "TEST_NOTIFICATION": "测试通知",
-        }
-        return mapping.get(signal, signal)
+        return SIGNAL_LABELS.get(signal, signal)
 
     @staticmethod
     def _render_source_role(source_role: str) -> str:
-        mapping = {
-            "PRIMARY": "主源",
-            "BACKUP": "备源",
-            "VERIFY": "验证",
-            "REPLAY": "历史回放",
-            "TEST": "测试",
-        }
-        return mapping.get(source_role, source_role)
+        return SOURCE_ROLE_LABELS.get(source_role, source_role)
 
     @staticmethod
     def _render_detail(event: AlertEvent) -> str:
-        if event.detail:
-            return f"{event.detail}\n"
-        return f"K: {event.k:.4f}\nD: {event.d:.4f}\nJ: {event.j:.4f}\n"
+        if not event.detail:
+            return f"K: {event.k:.4f}\nD: {event.d:.4f}\nJ: {event.j:.4f}\n"
+
+        lines: list[str] = []
+        for raw_line in event.detail.splitlines():
+            if "=" not in raw_line:
+                lines.append(raw_line)
+                continue
+            key, value = raw_line.split("=", 1)
+            lines.append(f"{DETAIL_LABELS.get(key, key)}: {value}")
+        return "\n".join(lines) + "\n"
