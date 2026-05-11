@@ -42,6 +42,11 @@ class MonitorService:
     def run_once(self) -> None:
         for symbol in self._config.symbols:
             try:
+                self._check_ma_alerts(symbol)
+            except Exception as exc:  # noqa: BLE001
+                self._logger.exception("Unexpected error while checking MA alerts for %s: %s", symbol, exc)
+
+            try:
                 self._check_one_minute_alerts(symbol)
             except Exception as exc:  # noqa: BLE001
                 self._logger.exception("Unexpected error while checking 1m alerts for %s: %s", symbol, exc)
@@ -110,6 +115,75 @@ class MonitorService:
             j=current_point.j,
             source=self._data_router.active_source_name,
             source_role=self._data_router.active_source_role,
+        )
+        self._alert_service.send(event)
+
+    def _check_ma_alerts(self, symbol: str) -> None:
+        if not self._config.ma_alert_enabled:
+            return
+
+        interval = self._config.ma_interval
+        try:
+            candles = self._data_router.fetch_klines(symbol, interval, self._config.candle_limit)
+        except DataSourceError as exc:
+            self._logger.error("Failed to fetch MA candles for %s on %s: %s", symbol, interval, exc)
+            return
+
+        target_candles = candles if self._config.ma_alert_on_live_candle else candles[:-1]
+        required_count = self._config.ma_slow_period + 1
+        if len(target_candles) < required_count:
+            self._logger.warning("Not enough candles for MA %s on %s", symbol, interval)
+            return
+
+        previous_candles = target_candles[:-1]
+        current_candles = target_candles
+        previous_fast_ma = self._moving_average(previous_candles, self._config.ma_fast_period)
+        previous_slow_ma = self._moving_average(previous_candles, self._config.ma_slow_period)
+        current_fast_ma = self._moving_average(current_candles, self._config.ma_fast_period)
+        current_slow_ma = self._moving_average(current_candles, self._config.ma_slow_period)
+        current_candle = current_candles[-1]
+        relation = self._ma_relation(current_fast_ma, current_slow_ma)
+        state_key = (
+            f"{symbol}:MA:{interval}:"
+            f"{self._config.ma_fast_period}:{self._config.ma_slow_period}"
+        )
+        previous_state = self._signal_state.get(state_key)
+
+        if previous_state and previous_state.relation == relation:
+            return
+
+        self._signal_state[state_key] = SignalSnapshot(
+            symbol=symbol,
+            interval=interval,
+            candle_open_time_ms=current_candle.open_time_ms,
+            relation=relation,
+        )
+        self._save_state()
+
+        signal = self._detect_ma_cross(
+            previous_fast_ma=previous_fast_ma,
+            previous_slow_ma=previous_slow_ma,
+            current_fast_ma=current_fast_ma,
+            current_slow_ma=current_slow_ma,
+        )
+        if signal is None:
+            return
+
+        event = AlertEvent(
+            symbol=symbol,
+            interval=interval,
+            signal=signal,
+            candle_open_time_ms=current_candle.open_time_ms,
+            close_price=current_candle.close_price,
+            k=0.0,
+            d=0.0,
+            j=0.0,
+            source=self._data_router.active_source_name,
+            source_role=self._data_router.active_source_role,
+            detail=(
+                f"fast_ma={current_fast_ma:.4f}\n"
+                f"slow_ma={current_slow_ma:.4f}"
+            ),
         )
         self._alert_service.send(event)
 
@@ -187,12 +261,38 @@ class MonitorService:
         return None
 
     @staticmethod
+    def _detect_ma_cross(
+        previous_fast_ma: float,
+        previous_slow_ma: float,
+        current_fast_ma: float,
+        current_slow_ma: float,
+    ) -> str | None:
+        if previous_fast_ma <= previous_slow_ma and current_fast_ma > current_slow_ma:
+            return "MA_CROSS_ABOVE"
+        if previous_fast_ma >= previous_slow_ma and current_fast_ma < current_slow_ma:
+            return "MA_CROSS_BELOW"
+        return None
+
+    @staticmethod
     def _relation(point: IndicatorPoint) -> str:
         if point.j > point.k:
             return "above"
         if point.j < point.k:
             return "below"
         return "equal"
+
+    @staticmethod
+    def _ma_relation(fast_ma: float, slow_ma: float) -> str:
+        if fast_ma > slow_ma:
+            return "above"
+        if fast_ma < slow_ma:
+            return "below"
+        return "equal"
+
+    @staticmethod
+    def _moving_average(candles, period: int) -> float:
+        window = candles[-period:]
+        return sum(candle.close_price for candle in window) / period
 
     def _load_state(self) -> dict[str, SignalSnapshot]:
         if not os.path.exists(self._state_file):

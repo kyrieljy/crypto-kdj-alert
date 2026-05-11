@@ -27,6 +27,11 @@ class AppConfig:
     k_smoothing: int
     d_smoothing: int
     alert_on_live_candle: bool
+    ma_alert_enabled: bool
+    ma_interval: str
+    ma_fast_period: int
+    ma_slow_period: int
+    ma_alert_on_live_candle: bool
     one_min_range_alert_enabled: bool
     one_min_range_threshold: int
     one_min_volume_alert_enabled: bool
@@ -57,7 +62,7 @@ class AppConfig:
 
 
 def load_config() -> AppConfig:
-    symbols_raw = os.getenv("SYMBOLS", "BTCUSDT,ETHUSDT")
+    symbols_raw = os.getenv("SYMBOLS", "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,ZECUSDT")
     symbols = [symbol.strip().upper() for symbol in symbols_raw.split(",") if symbol.strip()]
     return AppConfig(
         symbols=symbols,
@@ -66,6 +71,11 @@ def load_config() -> AppConfig:
         k_smoothing=_int_env("K_SMOOTHING", 20),
         d_smoothing=_int_env("D_SMOOTHING", 9),
         alert_on_live_candle=_bool_env("ALERT_ON_LIVE_CANDLE", False),
+        ma_alert_enabled=_bool_env("MA_ALERT_ENABLED", True),
+        ma_interval=os.getenv("MA_INTERVAL", "1d").strip(),
+        ma_fast_period=_int_env("MA_FAST_PERIOD", 25),
+        ma_slow_period=_int_env("MA_SLOW_PERIOD", 99),
+        ma_alert_on_live_candle=_bool_env("MA_ALERT_ON_LIVE_CANDLE", False),
         one_min_range_alert_enabled=_bool_env("ONE_MIN_RANGE_ALERT_ENABLED", True),
         one_min_range_threshold=_int_env("ONE_MIN_RANGE_THRESHOLD", 20),
         one_min_volume_alert_enabled=_bool_env("ONE_MIN_VOLUME_ALERT_ENABLED", True),

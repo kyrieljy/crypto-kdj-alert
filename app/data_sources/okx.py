@@ -11,6 +11,9 @@ from app.models import Candle
 OKX_SYMBOL_MAP = {
     "BTCUSDT": "BTC-USDT-SWAP",
     "ETHUSDT": "ETH-USDT-SWAP",
+    "SOLUSDT": "SOL-USDT-SWAP",
+    "BNBUSDT": "BNB-USDT-SWAP",
+    "ZECUSDT": "ZEC-USDT-SWAP",
 }
 
 
@@ -67,4 +70,8 @@ class OkxSwapDataSource(BaseDataSource):
             return "5m"
         if interval == "15m":
             return "15m"
+        if interval == "1h":
+            return "1H"
+        if interval == "1d":
+            return "1D"
         raise DataSourceError(f"Unsupported OKX interval: {interval}")

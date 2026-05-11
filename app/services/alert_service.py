@@ -9,32 +9,36 @@ from app.notifiers.base import BaseNotifier, NotifierError
 
 
 SIGNAL_LABELS = {
-    "J_CROSS_ABOVE_K": "J上穿K",
-    "J_CROSS_BELOW_K": "J下穿K",
-    "J_CROSS_ABOVE_K_REPLAY": "J上穿K（历史回放）",
-    "J_CROSS_BELOW_K_REPLAY": "J下穿K（历史回放）",
-    "J_CROSS_ABOVE_K_REPLAY_RESEND": "J上穿K（历史回放重发）",
-    "J_CROSS_BELOW_K_REPLAY_RESEND": "J下穿K（历史回放重发）",
-    "J_CROSS_BELOW_K_VERIFY": "J下穿K（中文编码验证）",
-    "ONE_MIN_RANGE_ALERT": "1分钟高低差报警",
-    "ONE_MIN_VOLUME_ALERT": "1分钟成交量报警",
-    "TEST_NOTIFICATION": "测试通知",
+    "J_CROSS_ABOVE_K": "J\u4e0a\u7a7fK",
+    "J_CROSS_BELOW_K": "J\u4e0b\u7a7fK",
+    "J_CROSS_ABOVE_K_REPLAY": "J\u4e0a\u7a7fK\uff08\u5386\u53f2\u56de\u653e\uff09",
+    "J_CROSS_BELOW_K_REPLAY": "J\u4e0b\u7a7fK\uff08\u5386\u53f2\u56de\u653e\uff09",
+    "J_CROSS_ABOVE_K_REPLAY_RESEND": "J\u4e0a\u7a7fK\uff08\u5386\u53f2\u56de\u653e\u91cd\u53d1\uff09",
+    "J_CROSS_BELOW_K_REPLAY_RESEND": "J\u4e0b\u7a7fK\uff08\u5386\u53f2\u56de\u653e\u91cd\u53d1\uff09",
+    "J_CROSS_BELOW_K_VERIFY": "J\u4e0b\u7a7fK\uff08\u4e2d\u6587\u7f16\u7801\u9a8c\u8bc1\uff09",
+    "ONE_MIN_RANGE_ALERT": "1\u5206\u949f\u9ad8\u4f4e\u5dee\u62a5\u8b66",
+    "ONE_MIN_VOLUME_ALERT": "1\u5206\u949f\u6210\u4ea4\u91cf\u62a5\u8b66",
+    "MA_CROSS_ABOVE": "MA25\u4e0a\u7a7fMA99",
+    "MA_CROSS_BELOW": "MA25\u4e0b\u7a7fMA99",
+    "TEST_NOTIFICATION": "\u6d4b\u8bd5\u901a\u77e5",
 }
 
 SOURCE_ROLE_LABELS = {
-    "PRIMARY": "主源",
-    "BACKUP": "备源",
-    "VERIFY": "验证",
-    "REPLAY": "历史回放",
-    "TEST": "测试",
+    "PRIMARY": "\u4e3b\u6e90",
+    "BACKUP": "\u5907\u6e90",
+    "VERIFY": "\u9a8c\u8bc1",
+    "REPLAY": "\u5386\u53f2\u56de\u653e",
+    "TEST": "\u6d4b\u8bd5",
 }
 
 DETAIL_LABELS = {
-    "range_diff": "高低差",
-    "threshold": "阈值",
-    "high_price": "最高价",
-    "low_price": "最低价",
-    "volume": "成交量",
+    "range_diff": "\u9ad8\u4f4e\u5dee",
+    "threshold": "\u9608\u503c",
+    "high_price": "\u6700\u9ad8\u4ef7",
+    "low_price": "\u6700\u4f4e\u4ef7",
+    "volume": "\u6210\u4ea4\u91cf",
+    "fast_ma": "\u5feb\u7ebfMA",
+    "slow_ma": "\u6162\u7ebfMA",
 }
 
 
@@ -60,15 +64,15 @@ class AlertService:
         source_role_label = self._render_source_role(event.source_role)
         detail_block = self._render_detail(event)
         return (
-            "[KDJ预警]\n"
-            f"标的: {event.symbol}\n"
-            f"周期: {event.interval}\n"
-            f"信号: {signal_label}\n"
-            f"收盘价: {event.close_price:.4f}\n"
+            "[KDJ\u9884\u8b66]\n"
+            f"\u6807\u7684: {event.symbol}\n"
+            f"\u5468\u671f: {event.interval}\n"
+            f"\u4fe1\u53f7: {signal_label}\n"
+            f"\u6536\u76d8\u4ef7: {event.close_price:.4f}\n"
             f"{detail_block}"
-            f"K线时间: {candle_time:%Y-%m-%d %H:%M:%S %Z}\n"
-            f"数据源: {source_role_label} ({event.source})\n"
-            f"提醒时间: {trigger_time:%Y-%m-%d %H:%M:%S %Z}"
+            f"K\u7ebf\u65f6\u95f4: {candle_time:%Y-%m-%d %H:%M:%S %Z}\n"
+            f"\u6570\u636e\u6e90: {source_role_label} ({event.source})\n"
+            f"\u63d0\u9192\u65f6\u95f4: {trigger_time:%Y-%m-%d %H:%M:%S %Z}"
         )
 
     @staticmethod
