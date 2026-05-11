@@ -74,11 +74,12 @@ def main() -> None:
         logger.warning("No notifier is fully configured. Alerts will only be logged.")
 
     if "--test-notify" in sys.argv:
-        test_event = AlertEvent(
+        now_ms = int(datetime.now().timestamp() * 1000)
+        kdj_test_event = AlertEvent(
             symbol=config.symbols[0] if config.symbols else "BTCUSDT",
             interval=config.intervals[0] if config.intervals else "5m",
             signal="TEST_NOTIFICATION",
-            candle_open_time_ms=int(datetime.now().timestamp() * 1000),
+            candle_open_time_ms=now_ms,
             close_price=100000.0,
             k=50.0,
             d=45.0,
@@ -87,7 +88,21 @@ def main() -> None:
             source_role="TEST",
             detail="K: 50.0000\nD: 45.0000\nJ: 60.0000",
         )
-        alert_service.send(test_event)
+        ma_test_event = AlertEvent(
+            symbol=config.symbols[0] if config.symbols else "BTCUSDT",
+            interval=config.ma_interval,
+            signal="MA_CROSS_ABOVE",
+            candle_open_time_ms=now_ms,
+            close_price=100000.0,
+            k=0.0,
+            d=0.0,
+            j=0.0,
+            source="manual_test",
+            source_role="TEST",
+            detail="fast_ma=102300.1234\nslow_ma=101980.5678",
+        )
+        alert_service.send(kdj_test_event)
+        alert_service.send(ma_test_event)
         logger.info("Test notification completed")
         return
 

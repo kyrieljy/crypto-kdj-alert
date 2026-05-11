@@ -41,6 +41,8 @@ DETAIL_LABELS = {
     "slow_ma": "\u6162\u7ebfMA",
 }
 
+MA_SIGNALS = {"MA_CROSS_ABOVE", "MA_CROSS_BELOW"}
+
 
 class AlertService:
     def __init__(self, notifiers: list[BaseNotifier], timezone_name: str, logger: logging.Logger) -> None:
@@ -63,8 +65,9 @@ class AlertService:
         signal_label = self._render_signal(event.signal)
         source_role_label = self._render_source_role(event.source_role)
         detail_block = self._render_detail(event)
+        title = "[MA\u9884\u8b66]" if event.signal in MA_SIGNALS else "[KDJ\u9884\u8b66]"
         return (
-            "[KDJ\u9884\u8b66]\n"
+            f"{title}\n"
             f"\u6807\u7684: {event.symbol}\n"
             f"\u5468\u671f: {event.interval}\n"
             f"\u4fe1\u53f7: {signal_label}\n"
