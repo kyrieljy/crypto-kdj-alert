@@ -31,26 +31,34 @@ class MonitorService:
 
     def run_forever(self) -> None:
         self._logger.info(
-            "Starting monitor for %s on %s using primary/backup routing",
-            ",".join(self._config.symbols),
+            "Starting monitor: KDJ symbols=%s intervals=%s | MA symbols=%s interval=%s periods=%s/%s live=%s | 1m symbols=%s",
+            ",".join(self._config.kdj_symbols),
             ",".join(self._config.intervals),
+            ",".join(self._config.ma_symbols),
+            self._config.ma_interval,
+            self._config.ma_fast_period,
+            self._config.ma_slow_period,
+            self._config.ma_alert_on_live_candle,
+            ",".join(self._config.symbols),
         )
         while True:
             self.run_once()
             time.sleep(self._config.poll_seconds)
 
     def run_once(self) -> None:
-        for symbol in self._config.symbols:
+        for symbol in self._config.ma_symbols:
             try:
                 self._check_ma_alerts(symbol)
             except Exception as exc:  # noqa: BLE001
                 self._logger.exception("Unexpected error while checking MA alerts for %s: %s", symbol, exc)
 
+        for symbol in self._config.symbols:
             try:
                 self._check_one_minute_alerts(symbol)
             except Exception as exc:  # noqa: BLE001
                 self._logger.exception("Unexpected error while checking 1m alerts for %s: %s", symbol, exc)
 
+        for symbol in self._config.kdj_symbols:
             for interval in self._config.intervals:
                 try:
                     self._check_symbol(symbol, interval)

@@ -76,7 +76,7 @@ def main() -> None:
     if "--test-notify" in sys.argv:
         now_ms = int(datetime.now().timestamp() * 1000)
         kdj_test_event = AlertEvent(
-            symbol=config.symbols[0] if config.symbols else "BTCUSDT",
+            symbol=config.kdj_symbols[0] if config.kdj_symbols else "ETHUSDT",
             interval=config.intervals[0] if config.intervals else "5m",
             signal="TEST_NOTIFICATION",
             candle_open_time_ms=now_ms,
@@ -89,7 +89,7 @@ def main() -> None:
             detail="K: 50.0000\nD: 45.0000\nJ: 60.0000",
         )
         ma_test_event = AlertEvent(
-            symbol=config.symbols[0] if config.symbols else "BTCUSDT",
+            symbol=config.ma_symbols[0] if config.ma_symbols else "BTCUSDT",
             interval=config.ma_interval,
             signal="MA_CROSS_ABOVE",
             candle_open_time_ms=now_ms,

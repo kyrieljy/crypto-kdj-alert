@@ -19,9 +19,16 @@ def _int_env(name: str, default: int) -> int:
     return int(raw)
 
 
+def _symbols_env(name: str, default: str) -> List[str]:
+    raw = os.getenv(name, default)
+    return [symbol.strip().upper() for symbol in raw.split(",") if symbol.strip()]
+
+
 @dataclass(frozen=True)
 class AppConfig:
     symbols: List[str]
+    kdj_symbols: List[str]
+    ma_symbols: List[str]
     intervals: List[str]
     kdj_period: int
     k_smoothing: int
@@ -62,10 +69,12 @@ class AppConfig:
 
 
 def load_config() -> AppConfig:
-    symbols_raw = os.getenv("SYMBOLS", "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,ZECUSDT")
-    symbols = [symbol.strip().upper() for symbol in symbols_raw.split(",") if symbol.strip()]
+    default_symbols = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,ZECUSDT"
+    symbols = _symbols_env("SYMBOLS", default_symbols)
     return AppConfig(
         symbols=symbols,
+        kdj_symbols=_symbols_env("KDJ_SYMBOLS", ",".join(symbols)),
+        ma_symbols=_symbols_env("MA_SYMBOLS", ",".join(symbols)),
         intervals=[item.strip() for item in os.getenv("INTERVALS", os.getenv("INTERVAL", "5m")).split(",") if item.strip()],
         kdj_period=_int_env("KDJ_PERIOD", 26),
         k_smoothing=_int_env("K_SMOOTHING", 20),
