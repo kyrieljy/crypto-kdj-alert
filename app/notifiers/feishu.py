@@ -25,5 +25,21 @@ class FeishuWebhookNotifier(BaseNotifier):
                 timeout=self._timeout_seconds,
             )
             response.raise_for_status()
+            self._raise_for_feishu_error(response)
         except requests.RequestException as exc:
             raise NotifierError(f"Feishu send failed: {exc}") from exc
+
+    @staticmethod
+    def _raise_for_feishu_error(response: requests.Response) -> None:
+        if not response.text:
+            return
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise NotifierError(f"Feishu returned non-JSON response: {response.text[:200]}") from exc
+
+        code = payload.get("code")
+        status_code = payload.get("StatusCode")
+        if code not in (None, 0) or status_code not in (None, 0):
+            raise NotifierError(f"Feishu returned error response: {payload}")
